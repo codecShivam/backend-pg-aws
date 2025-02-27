@@ -25,10 +25,7 @@ app.use("/", authRoutes);
 app.use("/", profileRoutes);
 
 // Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: "Something went wrong!" });
-});
+app.use(errorHandler);
 
 // Start server
 app.listen(port, () => {

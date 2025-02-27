@@ -5,6 +5,8 @@ require("dotenv").config();
 // Import configurations
 const sessionConfig = require("./config/session");
 
+const errorHandler = require("./middleware/error");
+
 // Import routes
 const authRoutes = require("./routes/authRoutes");
 const profileRoutes = require("./routes/profileRoutes");

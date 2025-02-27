@@ -1,6 +1,7 @@
 const pool = require("../config/db");
 const transporter = require("../config/email");
 const { generateOTP, getOtpExpiration } = require("../utils/otpUtils");
+const ses = require("../config/aws");
 
 // Send OTP to email
 const sendOTP = async (req, res) => {
@@ -10,9 +11,27 @@ const sendOTP = async (req, res) => {
     return res.status(400).json({ error: "Email is required" });
   }
 
+ 
+
   try {
     const otp = generateOTP();
     const expiresAt = getOtpExpiration();
+    const params = {
+      Destination: {
+        ToAddresses: [email],
+      },
+      Message: {
+        Body: {
+          Text: {
+            Data: `Your OTP is ${otp}. It will expire in 5 minutes.`,
+          },
+        },
+        Subject: {
+          Data: "Your OTP Code",
+        },
+      },
+      Source: process.env.SENDER_EMAIL,
+    };
 
     await pool.query(
       `INSERT INTO users (email, otp, otp_expires_at) 
@@ -23,14 +42,8 @@ const sendOTP = async (req, res) => {
     );
 
     // Send OTP via email
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Your OTP Code",
-      text: `Your OTP is ${otp}. It will expire in 5 minutes.`,
-    });
-
-    res.json({ message: "OTP sent to email" });
+    await ses.sendEmail(params).promise();
+    res.status(200).json({ message: "Email sent successfully!" });
   } catch (err) {
     console.error("Error sending OTP:", err);
     res.status(500).json({ error: "Failed to send OTP" });

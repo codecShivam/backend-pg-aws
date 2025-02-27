@@ -1,5 +1,4 @@
 const pool = require("../config/db");
-const transporter = require("../config/email");
 const { generateOTP, getOtpExpiration } = require("../utils/otpUtils");
 const ses = require("../config/aws");
 

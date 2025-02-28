@@ -10,7 +10,9 @@ function App() {
   const [error, setError] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [profile, setProfile] = useState<any>(null);
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
   // Configure axios defaults
   axios.defaults.withCredentials = true;
@@ -30,6 +32,9 @@ function App() {
           setProfile(profileResponse.data);
           setIsLoggedIn(true);
           setEmail(profileResponse.data.user?.email || "");
+          
+          // Fetch users list if logged in
+          fetchUsers();
         } catch (authError) {
           console.log("User not authenticated");
         }
@@ -42,6 +47,20 @@ function App() {
 
     initialize();
   }, []);
+
+  // Fetch all users
+  const fetchUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const response = await axios.get("/users");
+      setUsers(response.data);
+    } catch (error: any) {
+      console.error("Error fetching users:", error);
+      setError(error.response?.data?.error || "Failed to fetch users");
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
   // Send OTP to Email
   const sendOTP = async (e: React.FormEvent) => {
@@ -98,6 +117,9 @@ function App() {
       const profileResponse = await axios.get("/profile");
       setProfile(profileResponse.data);
       setIsLoggedIn(true);
+      
+      // Fetch users list after login
+      fetchUsers();
     } catch (error: any) {
       setError(error.response?.data?.error || "Invalid or expired OTP");
     } finally {
@@ -114,6 +136,7 @@ function App() {
       setStep(1);
       setEmail("");
       setOTP("");
+      setUsers([]);
       setMessage(response.data.message || "Logged out successfully");
     } catch (error: any) {
       setError(error.response?.data?.error || "Failed to logout");
@@ -148,6 +171,32 @@ function App() {
             <h2>Profile Information</h2>
             <p><strong>Email:</strong> {profile?.user?.email}</p>
             <p><strong>Status:</strong> {profile?.message}</p>
+          </div>
+          
+          <div className="users-list">
+            <h2>All Users</h2>
+            {loadingUsers ? (
+              <p>Loading users...</p>
+            ) : users.length > 0 ? (
+              <table className="users-table">
+                <thead>
+                  <tr>
+                    <th>Email</th>
+                    <th>Created At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((user, index) => (
+                    <tr key={index}>
+                      <td>{user.email}</td>
+                      <td>{new Date(user.created_at).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p>No users found</p>
+            )}
           </div>
           
           <button className="logout-btn" onClick={logout} disabled={loading}>

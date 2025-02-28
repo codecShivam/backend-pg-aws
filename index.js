@@ -11,7 +11,7 @@ const errorHandler = require("./middleware/error");
 // Import routes
 const authRoutes = require("./routes/authRoutes");
 const profileRoutes = require("./routes/profileRoutes");
-
+const userRoutes = require("./routes/userRoutes");
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -32,6 +32,7 @@ app.get("/api", (req, res) => {
 // Routes
 app.use("/", authRoutes);
 app.use("/", profileRoutes);
+app.use("/", userRoutes);
 
 // Error handling middleware
 app.use(errorHandler);

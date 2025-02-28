@@ -10,11 +10,12 @@ const sendOTP = async (req, res) => {
     return res.status(400).json({ error: "Email is required" });
   }
 
- 
-
   try {
+    // Generate OTP first
     const otp = generateOTP();
     const expiresAt = getOtpExpiration();
+
+    // Then create email params with the generated OTP
     const params = {
       Destination: {
         ToAddresses: [email],
@@ -32,20 +33,44 @@ const sendOTP = async (req, res) => {
       Source: process.env.SENDER_EMAIL,
     };
 
-    await pool.query(
-      `INSERT INTO users (email, otp, otp_expires_at) 
-       VALUES ($1, $2, $3) 
-       ON CONFLICT (email) 
-       DO UPDATE SET otp = $2, otp_expires_at = $3`,
-      [email, otp, expiresAt]
-    );
+    // First try to connect to database
+    try {
+      // Save OTP to database
+      await pool.query(
+        `INSERT INTO users (email, otp, otp_expires_at) 
+         VALUES ($1, $2, $3) 
+         ON CONFLICT (email) 
+         DO UPDATE SET otp = $2, otp_expires_at = $3`,
+        [email, otp, expiresAt]
+      );
+    } catch (dbError) {
+      console.error("Database error:", dbError);
+      return res.status(500).json({ error: "Database connection failed" });
+    }
 
-    // Send OTP via email
-    await ses.sendEmail(params).promise();
-    res.status(200).json({ message: "Email sent successfully!" });
+    // Then try to send email
+    try {
+      // Send OTP via email
+      await ses.sendEmail(params).promise();
+      res.status(200).json({ message: "Email sent successfully!" });
+    } catch (emailError) {
+      console.error("Email sending error:", emailError);
+      
+      // If email fails, clean up the database entry
+      try {
+        await pool.query(
+          `UPDATE users SET otp = NULL, otp_expires_at = NULL WHERE email = $1`,
+          [email]
+        );
+      } catch (cleanupError) {
+        console.error("Failed to clean up after email error:", cleanupError);
+      }
+      
+      return res.status(500).json({ error: "Failed to send email" });
+    }
   } catch (err) {
-    console.error("Error sending OTP:", err);
-    res.status(500).json({ error: "Failed to send OTP" });
+    console.error("Error in OTP process:", err);
+    res.status(500).json({ error: "Failed to process OTP request" });
   }
 };
 

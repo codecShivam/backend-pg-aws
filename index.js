@@ -4,6 +4,7 @@ require("dotenv").config();
 
 // Import configurations
 const sessionConfig = require("./config/session");
+const pool = require("./config/db");
 
 const errorHandler = require("./middleware/error");
 
@@ -16,11 +17,17 @@ const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: process.env.CLIENT_URL,
   credentials: true
 }));
+
 app.use(express.json());
 app.use(sessionConfig);
+
+// Simple health check endpoint
+app.get("/api", (req, res) => {
+  res.json({ message: "API is running" });
+});
 
 // Routes
 app.use("/", authRoutes);
@@ -30,9 +37,17 @@ app.use("/", profileRoutes);
 app.use(errorHandler);
 
 // Start server
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
-});
+pool.query('SELECT NOW()')
+  .then(() => {
+    console.log('Database connection successful');
+    app.listen(port, () => {
+      console.log(`Server running on http://localhost:${port}`);
+    });
+  })
+  .catch(err => {
+    console.error('Database connection error:', err);
+    process.exit(1);
+  });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {

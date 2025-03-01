@@ -98,18 +98,6 @@ This will serve both the frontend and backend from the same port.
 - PostgreSQL database
 - Gmail account (for sending OTPs)
 
-#### Database Setup
-
-Create a PostgreSQL database and run the following SQL:
-
-```sql
-CREATE TABLE users (
-  email VARCHAR(255) PRIMARY KEY,
-  otp VARCHAR(6),
-  otp_expires_at TIMESTAMP
-);
-```
-
 #### Installation
 
 1. Clone the repository

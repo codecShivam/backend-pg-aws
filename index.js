@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
+const path = require('path');
 
 // Import configurations
 const sessionConfig = require("./config/session");
@@ -33,6 +34,15 @@ app.get("/api", (req, res) => {
 app.use("/", authRoutes);
 app.use("/", profileRoutes);
 app.use("/", userRoutes);
+
+// Serve static files from the React/Vue app
+app.use(express.static(path.join(__dirname, 'frontend/dist')));
+
+// The "catchall" handler: for any request that doesn't
+// match one above, send back the index.html file.
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend/dist/index.html'));
+});
 
 // Error handling middleware
 app.use(errorHandler);

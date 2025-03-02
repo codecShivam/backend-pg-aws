@@ -15,13 +15,33 @@ const profileRoutes = require("./routes/profileRoutes");
 const userRoutes = require("./routes/userRoutes");
 const app = express();
 const port = process.env.PORT || 3000;
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1); // trust first proxy
+}
 
 // Middleware
-app.use(cors({
-  origin: process.env.CLIENT_URL,
-  credentials: true
-}));
+// Enhanced CORS configuration specifically for your Cloudflare Pages domain
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://backend-pg.pages.dev'] // Your specific Cloudflare Pages domain
+    : process.env.CLIENT_URL,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
 
+app.use(cors(corsOptions));
+
+// Set additional headers for cross-domain cookies
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Credentials', 'true');
+  if (req.headers.origin === 'https://backend-pg.pages.dev') {
+    res.header('Access-Control-Allow-Origin', 'https://backend-pg.pages.dev');
+  }
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'X-Requested-With, X-HTTP-Method-Override, Content-Type, Accept');
+  next();
+});
 app.use(express.json());
 app.use(sessionConfig);
 

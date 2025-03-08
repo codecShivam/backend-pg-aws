@@ -1,6 +1,12 @@
-# Email OTP Authentication System
+# Authentication System
 
 A secure authentication system using email-based One-Time Passwords (OTP) with a React frontend and Express.js backend.
+
+
+
+https://github.com/user-attachments/assets/25719894-25ed-4d77-a061-c36de9a94f44
+
+
 
 ## Features
 

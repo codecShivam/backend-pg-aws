@@ -17,7 +17,7 @@ const Navbar = ({ isLoggedIn, logout }: NavbarProps) => {
               <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 4c1.86 0 3.41 1.28 3.86 3H8.14c.45-1.72 2-3 3.86-3zm0 14c-3.03 0-5.78-1.91-6.8-4.67C6.45 15.56 8.42 16 12 16s5.55-.44 6.8-1.67C17.78 17.09 15.03 19 12 19z" />
             </svg>
           </div>
-          OTP Auth
+         Auth App
         </Link>
         
         <div className="navbar-menu">

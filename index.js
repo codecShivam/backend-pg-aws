@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
-// const path = require('path');
+const path = require('path');
 
 // Import configurations
 const sessionConfig = require("./config/session");
@@ -15,6 +15,8 @@ const profileRoutes = require("./routes/profileRoutes");
 const userRoutes = require("./routes/userRoutes");
 const app = express();
 const port = process.env.PORT || 3000;
+
+
 if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1); // trust first proxy
 }
@@ -54,6 +56,9 @@ app.get("/api", (req, res) => {
 app.use("/", authRoutes);
 app.use("/", profileRoutes);
 app.use("/", userRoutes);
+
+// Add this line to serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // // Serve static files from the React/Vue app
 // app.use(express.static(path.join(__dirname, 'frontend/dist')));

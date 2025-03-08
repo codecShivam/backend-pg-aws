@@ -1,18 +1,39 @@
 import { useState, useEffect } from "react";
+import { Outlet, useNavigate, useOutletContext } from "react-router-dom";
 import axios from "axios";
 import "./App.css";
 
+// Components
+import Layout from "./components/layout/Layout";
+
+// Types
+export interface User {
+  email: string;
+  username?: string;
+  full_name?: string;
+  bio?: string;
+  profile_image_url?: string;
+  created_at: string;
+}
+
+export interface ProfileData {
+  user: User;
+}
+
+type ContextType = {
+  isLoggedIn: boolean;
+  profile: ProfileData | null;
+  setProfile: (profile: ProfileData) => void;
+  setIsLoggedIn: (value: boolean) => void;
+  logout: () => Promise<void>;
+};
+
 function App() {
-  const [email, setEmail] = useState("");
-  const [otp, setOTP] = useState("");
-  const [step, setStep] = useState(1); // 1: Enter email, 2: Enter OTP
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [profile, setProfile] = useState<any>(null);
-  const [users, setUsers] = useState<any[]>([]);
+  const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   // Configure axios defaults
   axios.defaults.withCredentials = true;
@@ -23,20 +44,16 @@ function App() {
     const initialize = async () => {
       try {
         // Check if backend is reachable
-        const apiResponse = await axios.get("/api");
-        setMessage(apiResponse.data.message);
+        await axios.get("/api");
         
         // Check authentication status
         try {
           const profileResponse = await axios.get("/profile");
           setProfile(profileResponse.data);
           setIsLoggedIn(true);
-          setEmail(profileResponse.data.user?.email || "");
-          
-          // Fetch users list if logged in
-          fetchUsers();
         } catch (authError) {
           console.log("User not authenticated");
+          navigate('/login');
         }
       } catch (error) {
         setError("Backend not reachable. Please try again later.");
@@ -46,98 +63,16 @@ function App() {
     };
 
     initialize();
-  }, []);
-
-  // Fetch all users
-  const fetchUsers = async () => {
-    setLoadingUsers(true);
-    try {
-      const response = await axios.get("/users");
-      setUsers(response.data);
-    } catch (error: any) {
-      console.error("Error fetching users:", error);
-      setError(error.response?.data?.error || "Failed to fetch users");
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
-
-  // Send OTP to Email
-  const sendOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate email
-    if (!email) {
-      setError("Email is required");
-      return;
-    }
-    
-    if (!/\S+@\S+\.\S+/.test(email)) {
-      setError("Please enter a valid email address");
-      return;
-    }
-    
-    setLoading(true);
-    setError("");
-    
-    try {
-      const response = await axios.post("/send-otp", { email });
-      setStep(2);
-      setMessage(response.data.message || "OTP sent to your email");
-    } catch (error: any) {
-      setError(error.response?.data?.error || "Failed to send OTP. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Verify OTP
-  const verifyOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate OTP
-    if (!otp) {
-      setError("OTP is required");
-      return;
-    }
-    
-    if (!/^\d{6}$/.test(otp)) {
-      setError("OTP must be 6 digits");
-      return;
-    }
-    
-    setLoading(true);
-    setError("");
-    
-    try {
-      const response = await axios.post("/verify-otp", { email, otp });
-      setMessage(response.data.message || "Authentication successful");
-      
-      // Get profile after successful verification
-      const profileResponse = await axios.get("/profile");
-      setProfile(profileResponse.data);
-      setIsLoggedIn(true);
-      
-      // Fetch users list after login
-      fetchUsers();
-    } catch (error: any) {
-      setError(error.response?.data?.error || "Invalid or expired OTP");
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [navigate]);
 
   // Logout
-  const logout = async () => {
+  const logout = async (): Promise<void> => {
     setLoading(true);
     try {
-      const response = await axios.post("/logout");
+      await axios.post("/logout");
       setIsLoggedIn(false);
-      setStep(1);
-      setEmail("");
-      setOTP("");
-      setUsers([]);
-      setMessage(response.data.message || "Logged out successfully");
+      setProfile(null);
+      navigate('/login');
     } catch (error: any) {
       setError(error.response?.data?.error || "Failed to logout");
     } finally {
@@ -145,142 +80,31 @@ function App() {
     }
   };
 
-  // Go back to email step
-  const goBack = () => {
-    setStep(1);
-    setOTP("");
-    setError("");
-  };
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="loader"></div>
+        <p>Loading application...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="container">
-      <h1>Email OTP Authentication</h1>
-      
-      {loading ? (
-        <div className="loader-container">
-          <div className="loader">
-            <div className="spinner"></div>
-          </div>
-          <p className="loader-message">Loading...</p>
-        </div>
-      ) : isLoggedIn ? (
-        <div className="profile-container">
-          <p className="success">✅ Logged in as {profile?.user?.email}</p>
-          
-          <div className="profile-info">
-            <h2>Profile Information</h2>
-            <p><strong>Email:</strong> {profile?.user?.email}</p>
-            <p><strong>Status:</strong> {profile?.message}</p>
-          </div>
-          
-          <div className="users-list">
-            <h2>All Users</h2>
-            {loadingUsers ? (
-              <p>Loading users...</p>
-            ) : users.length > 0 ? (
-              <table className="users-table">
-                <thead>
-                  <tr>
-                    <th>Email</th>
-                    <th>Created At</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((user, index) => (
-                    <tr key={index}>
-                      <td>{user.email}</td>
-                      <td>{new Date(user.created_at).toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <p>No users found</p>
-            )}
-          </div>
-          
-          <button className="logout-btn" onClick={logout} disabled={loading}>
-            {loading ? "Logging out..." : "Logout"}
-          </button>
-        </div>
-      ) : (
-        <div className="auth-container">
-          {error && <div className="alert alert-error">{error}</div>}
-          {message && <div className="alert alert-info">{message}</div>}
-          
-          {step === 1 ? (
-            <div className="auth-form">
-              <h2>Login with Email OTP</h2>
-              
-              <form onSubmit={sendOTP}>
-                <div className="form-group">
-                  <label htmlFor="email">Email Address</label>
-                  <input
-                    id="email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                
-                <button 
-                  type="submit" 
-                  className="primary-btn w-full"
-                  disabled={loading}
-                >
-                  {loading ? "Sending..." : "Send OTP"}
-                </button>
-              </form>
-            </div>
-          ) : (
-            <div className="auth-form">
-              <h2>Enter OTP</h2>
-              
-              <p className="email-info">OTP sent to: {email}</p>
-              
-              <form onSubmit={verifyOTP}>
-                <div className="form-group">
-                  <label htmlFor="otp">One-Time Password</label>
-                  <input
-                    id="otp"
-                    type="text"
-                    placeholder="Enter 6-digit OTP"
-                    value={otp}
-                    onChange={(e) => setOTP(e.target.value)}
-                    maxLength={6}
-                    pattern="[0-9]*"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    required
-                  />
-                </div>
-                
-                <div className="btn-group">
-                  <button 
-                    type="button" 
-                    className="secondary-btn"
-                    onClick={goBack}
-                  >
-                    Back
-                  </button>
-                  
-                  <button 
-                    type="submit" 
-                    className="primary-btn"
-                    disabled={loading}
-                  >
-                    {loading ? "Verifying..." : "Verify OTP"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+    <Layout isLoggedIn={isLoggedIn} logout={logout}>
+      {error && <div className="global-error">{error}</div>}
+      <Outlet context={{ 
+        isLoggedIn, 
+        profile, 
+        setProfile, 
+        setIsLoggedIn, 
+        logout 
+      } as ContextType} />
+    </Layout>
   );
+}
+
+export function useAppContext() {
+  return useOutletContext<ContextType>();
 }
 
 export default App;

@@ -20,4 +20,5 @@ services:
       - CLIENT_URL=${CLIENT_URL}
       - PORT=${PORT}
       - NODE_ENV=${NODE_ENV}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
     restart: "no"

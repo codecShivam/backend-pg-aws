@@ -1,6 +1,6 @@
 # Authentication System
 
-A secure authentication system using email-based One-Time Passwords (OTP) with a React frontend and Express.js backend.
+A secure authentication system using email-based One-Time Passwords (OTP) with a React frontend and Express.js backend, leveraging AWS services for production-grade infrastructure.
 
 
 
@@ -13,9 +13,42 @@ https://github.com/user-attachments/assets/25719894-25ed-4d77-a061-c36de9a94f44
 - Email-based OTP authentication
 - Session management with HTTP-only cookies
 - PostgreSQL database for user storage
+- Profile image upload and management with AWS S3
 - Modular backend architecture
 - React frontend with authentication state management
 - Docker support for easy deployment
+
+## AWS Services Used
+
+### AWS Simple Email Service (SES)
+- Used for sending secure, reliable OTP emails to users
+- Provides delivery tracking and high deliverability rates
+- Ensures emails don't get marked as spam
+
+### AWS Relational Database Service (RDS)
+- Hosts the PostgreSQL database for user data storage
+- Provides automated backups and high availability
+- Scales easily as user base grows
+
+### AWS Simple Storage Service (S3)
+- Stores user profile images with secure access control
+- Generates signed URLs for secure, time-limited access to images
+- Provides reliable and scalable object storage
+
+### AWS Identity and Access Management (IAM)
+- Manages secure access to AWS services and resources
+- Provides fine-grained permissions for S3, SES, and RDS
+- Ensures principle of least privilege for security
+
+### AWS Elastic Compute Cloud (EC2)
+- Hosts the containerized application
+- Provides scalable compute capacity
+- Enables deployment in multiple regions for lower latency
+
+### Docker
+- Containerizes the application for consistent deployment
+- Simplifies environment setup and dependency management
+- Enables easy scaling and deployment to various environments
 
 ## Project Structure
 

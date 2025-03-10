@@ -10,10 +10,10 @@ import Layout from "./components/layout/Layout";
 export interface User {
   email: string;
   username?: string;
-  full_name?: string;
+  fullName?: string;
   bio?: string;
-  profile_image_url?: string;
-  created_at: string;
+  profileImageUrl?: string;
+  createdAt: string;
 }
 
 export interface ProfileData {

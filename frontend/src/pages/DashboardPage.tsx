@@ -4,11 +4,12 @@ import axios from 'axios';
 import Profile from '../components/Profile';
 import { useAppContext, User } from '../App';
 
-// Create a type for the Profile component's User (without created_at)
-type ProfileUser = Omit<User, 'created_at'>;
+// Create a type for the Profile component's User (without createdAt)
+type ProfileUser = Omit<User, 'createdAt'>;
 
 const DashboardPage = () => {
   const { isLoggedIn, profile, setProfile, logout } = useAppContext();
+  console.log(profile);
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [error, setError] = useState('');
@@ -56,7 +57,7 @@ const DashboardPage = () => {
         ...profile,
         user: {
           ...updatedUser,
-          created_at: profile.user.created_at
+          createdAt: profile.user.createdAt
         }
       });
     }
@@ -142,7 +143,7 @@ const DashboardPage = () => {
     <div className="dashboard-page animate-fade-in">
       <div className="dashboard-header">
         <div className="user-welcome">
-          <h1>Welcome, {profile?.user?.full_name || profile?.user?.username || profile?.user?.email}</h1>
+          <h1>Welcome, {profile?.user?.fullName || profile?.user?.username || profile?.user?.email}</h1>
         </div>
         <button className="btn btn-danger" onClick={logout}>
           Logout
@@ -170,22 +171,22 @@ const DashboardPage = () => {
             {!showProfileEdit ? (
               <div className="profile-card animate-slide-up">
                 <div className="profile-header">
-                  {profile?.user?.profile_image_url ? (
-                    <img 
-                      src={profile.user.profile_image_url} 
+                  {profile?.user?.profileImageUrl ? (
+                    <img  
+                      src={profile.user.profileImageUrl} 
                       alt="Profile" 
                       className="profile-avatar" 
                       loading="lazy"
                     />
                   ) : (
                     <div className="profile-avatar-placeholder">
-                      {profile?.user?.full_name 
-                        ? profile.user.full_name.charAt(0).toUpperCase() 
+                      {profile?.user?.fullName 
+                        ? profile.user.fullName.charAt(0).toUpperCase() 
                         : profile?.user?.email.charAt(0).toUpperCase()}
                     </div>
                   )}
                   <div className="profile-info">
-                    <h2>{profile?.user?.full_name || 'No name set'}</h2>
+                    <h2>{profile?.user?.fullName || 'No name set'}</h2>
                     <p className="username">@{profile?.user?.username || profile?.user?.email.split('@')[0]}</p>
                     <p className="email">{profile?.user?.email}</p>
                   </div>
@@ -208,9 +209,9 @@ const DashboardPage = () => {
                 user={{
                   email: profile.user.email,
                   username: profile.user.username,
-                  full_name: profile.user.full_name,
+                  fullName: profile.user.fullName,
                   bio: profile.user.bio,
-                  profile_image_url: profile.user.profile_image_url
+                  profileImageUrl: profile.user.profileImageUrl
                 }} 
                 onProfileUpdate={handleProfileUpdate}
               />
@@ -241,24 +242,24 @@ const DashboardPage = () => {
                         <td>
                           <div className="user-cell">
                             <div className="user-avatar">
-                              {user.profile_image_url ? (
-                                <img src={user.profile_image_url} alt={user.username || user.email} />
+                                  {user.profileImageUrl ? (
+                                <img src={user.profileImageUrl} alt={user.username || user.email} />
                               ) : (
                                 <div className="avatar-placeholder">
-                                  {user.full_name 
-                                    ? user.full_name.charAt(0).toUpperCase() 
+                                  {user.fullName 
+                                    ? user.fullName.charAt(0).toUpperCase() 
                                     : user.email.charAt(0).toUpperCase()}
                                 </div>
                               )}
                             </div>
                             <div className="user-info">
-                              <span className="user-name">{user.full_name || 'No name'}</span>
+                              <span className="user-name">{user.fullName || 'No name'}</span>
                               {user.username && <span className="user-username">@{user.username}</span>}
                             </div>
                           </div>
                         </td>
                         <td>{user.email}</td>
-                        <td>{new Date(user.created_at).toLocaleDateString()}</td>
+                        <td>{new Date(user.createdAt).toLocaleDateString()}</td>
                       </tr>
                     ))}
                   </tbody>

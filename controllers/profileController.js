@@ -1,48 +1,41 @@
-const pool = require("../config/db");
+const { db } = require("../db");
+const { users } = require("../db/schema/index.ts");
+const { eq, sql } = require("drizzle-orm");
 const { getPublicUrl } = require("../config/s3");
 
 // Get user profile
 const getProfile = async (req, res) => {
   try {
-    // Fetch user profile with a more resilient query that works even if columns are missing
-    const result = await pool.query(
-      `SELECT id, email, 
-        CASE WHEN EXISTS (
-          SELECT 1 FROM information_schema.columns 
-          WHERE table_name='users' AND column_name='username'
-        ) THEN username ELSE NULL END as username,
-        CASE WHEN EXISTS (
-          SELECT 1 FROM information_schema.columns 
-          WHERE table_name='users' AND column_name='full_name'
-        ) THEN full_name ELSE NULL END as full_name,
-        CASE WHEN EXISTS (
-          SELECT 1 FROM information_schema.columns 
-          WHERE table_name='users' AND column_name='profile_image_url'
-        ) THEN profile_image_url ELSE NULL END as profile_image_url,
-        CASE WHEN EXISTS (
-          SELECT 1 FROM information_schema.columns 
-          WHERE table_name='users' AND column_name='bio'
-        ) THEN bio ELSE NULL END as bio,
-        created_at
-      FROM users WHERE email = $1`,
-      [req.session.user.email]
-    );
+    // Fetch user profile using Drizzle
+    const result = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        username: users.username,
+        fullName: users.fullName,
+        profileImageUrl: users.profileImageUrl,
+        bio: users.bio,
+        createdAt: users.createdAt
+      })
+      .from(users)
+      .where(eq(users.email, req.session.user.email))
+      .limit(1);
     
-    if (result.rows.length === 0) {
+    if (result.length === 0) {
       return res.status(404).json({ error: "User not found" });
     }
     
     // Get the user data
-    const userData = result.rows[0];
+    const userData = result[0];
     
     // If there's a profile image URL, get the signed URL
-    if (userData.profile_image_url) {
+    if (userData.profileImageUrl) {
       // Extract the filename from the stored URL
-      const pathParts = userData.profile_image_url.split('/');
+      const pathParts = userData.profileImageUrl.split('/');
       const filename = pathParts[pathParts.length - 1];
       
       // Get the signed URL from S3
-      userData.profile_image_url = await getPublicUrl(filename, userData.email);
+      userData.profileImageUrl = await getPublicUrl(filename, userData.email);
     }
     
     res.json({
@@ -54,18 +47,23 @@ const getProfile = async (req, res) => {
     
     // Fallback to basic profile if there's an error
     try {
-      const basicResult = await pool.query(
-        `SELECT id, email, created_at FROM users WHERE email = $1`,
-        [req.session.user.email]
-      );
+      const basicResult = await db
+        .select({
+          id: users.id,
+          email: users.email,
+          createdAt: users.createdAt
+        })
+        .from(users)
+        .where(eq(users.email, req.session.user.email))
+        .limit(1);
       
-      if (basicResult.rows.length === 0) {
+      if (basicResult.length === 0) {
         return res.status(404).json({ error: "User not found" });
       }
       
       res.json({
         message: "Basic profile retrieved successfully",
-        user: basicResult.rows[0]
+        user: basicResult[0]
       });
     } catch (fallbackErr) {
       console.error("Error fetching basic profile:", fallbackErr);
@@ -82,39 +80,54 @@ const updateProfile = async (req, res) => {
   try {
     // Check if username is already taken (if provided)
     if (username) {
-      const usernameCheck = await pool.query(
-        "SELECT id FROM users WHERE username = $1 AND email != $2",
-        [username, email]
-      );
+      const usernameCheck = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(sql`${users.username} = ${username} AND ${users.email} != ${email}`);
       
-      if (usernameCheck.rows.length > 0) {
+      if (usernameCheck.length > 0) {
         return res.status(400).json({ error: "Username already taken" });
       }
     }
     
-    // Update user profile
-    const result = await pool.query(
-      `UPDATE users 
-       SET username = COALESCE($1, username),
-           full_name = COALESCE($2, full_name),
-           bio = COALESCE($3, bio),
-           updated_at = NOW()
-       WHERE email = $4
-       RETURNING id, email, username, full_name, profile_image_url, bio, created_at`,
-      [username, fullName, bio, email]
-    );
+    // Update user profile with Drizzle
+    const updateValues = {};
+    if (username) updateValues.username = username;
+    if (fullName) updateValues.fullName = fullName;
+    if (bio !== undefined) updateValues.bio = bio;
+    updateValues.updatedAt = new Date();
+    
+    await db
+      .update(users)
+      .set(updateValues)
+      .where(eq(users.email, email));
+    
+    // Fetch updated user data
+    const result = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        username: users.username,
+        fullName: users.fullName,
+        profileImageUrl: users.profileImageUrl,
+        bio: users.bio,
+        createdAt: users.createdAt
+      })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
     
     // Get the user data
-    const userData = result.rows[0];
+    const userData = result[0];
     
     // If there's a profile image URL, get the signed URL
-    if (userData.profile_image_url) {
+    if (userData.profileImageUrl) {
       // Extract the filename from the stored URL
-      const pathParts = userData.profile_image_url.split('/');
+      const pathParts = userData.profileImageUrl.split('/');
       const filename = pathParts[pathParts.length - 1];
       
       // Get the signed URL from S3
-      userData.profile_image_url = await getPublicUrl(filename, userData.email);
+      userData.profileImageUrl = await getPublicUrl(filename, userData.email);
     }
     
     res.json({
@@ -146,21 +159,35 @@ const uploadProfileImage = async (req, res) => {
     // This makes it easier to generate signed URLs later
     const imageUrl = filename;
     
-    // Update profile image URL in database
-    const result = await pool.query(
-      `UPDATE users 
-       SET profile_image_url = $1,
-           updated_at = NOW()
-       WHERE email = $2
-       RETURNING id, email, username, full_name, profile_image_url, bio, created_at`,
-      [imageUrl, email]
-    );
+    // Update profile image URL in database using Drizzle
+    await db
+      .update(users)
+      .set({
+        profileImageUrl: imageUrl,
+        updatedAt: new Date()
+      })
+      .where(eq(users.email, email));
+    
+    // Fetch updated user data
+    const result = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        username: users.username,
+        fullName: users.fullName,
+        profileImageUrl: users.profileImageUrl,
+        bio: users.bio,
+        createdAt: users.createdAt
+      })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
     
     // Get the user data
-    const userData = result.rows[0];
+    const userData = result[0];
     
     // Generate a signed URL for the uploaded image
-    userData.profile_image_url = await getPublicUrl(filename, email);
+    userData.profileImageUrl = await getPublicUrl(filename, email);
     
     res.json({
       message: "Profile image updated successfully",
@@ -175,8 +202,8 @@ const uploadProfileImage = async (req, res) => {
 // Check database connection
 const checkDbConnection = async (req, res) => {
   try {
-    const result = await pool.query("SELECT NOW()");
-    res.json({ message: `PostgreSQL Connected: ${result.rows[0].now}` });
+    const result = await db.execute(sql`SELECT NOW()`);
+    res.json({ message: `PostgreSQL Connected: ${result[0].now}` });
   } catch (err) {
     console.error("Database connection error:", err);
     res.status(500).json({ error: "Database connection failed" });

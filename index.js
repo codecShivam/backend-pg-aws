@@ -3,9 +3,11 @@ const cors = require("cors");
 require("dotenv").config();
 const path = require('path');
 
-// Import configurations
+// Import Drizzle configuration
+const { db, pool } = require("./db");
+const { sql } = require("drizzle-orm");
+// Keep session config
 const sessionConfig = require("./config/session");
-const pool = require("./config/db");
 
 const errorHandler = require("./middleware/error");
 
@@ -60,14 +62,14 @@ app.use("/", userRoutes);
 // Add this line to serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Serve static files from the React/Vue app
-app.use(express.static(path.join(__dirname, 'frontend/dist')));
+// // Serve static files from the React/Vue app
+// app.use(express.static(path.join(__dirname, 'frontend/dist')));
 
-// The "catchall" handler: for any request that doesn't
-// match one above, send back the index.html file.
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'frontend/dist/index.html'));
-});
+// // The "catchall" handler: for any request that doesn't
+// // match one above, send back the index.html file.
+// app.get('*', (req, res) => {
+//   res.sendFile(path.join(__dirname, 'frontend/dist/index.html'));
+// });
 
 // Error handling middleware
 app.use(errorHandler);

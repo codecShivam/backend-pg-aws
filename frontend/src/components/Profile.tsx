@@ -3,8 +3,8 @@ import axios from 'axios';
 import './Profile.css';
 import { User as AppUser } from '../App';
 
-// We need a local User type without created_at for the Profile component
-interface User extends Omit<AppUser, 'created_at'> {}
+// We need a local User type without createdAt for the Profile component
+interface User extends Omit<AppUser, 'createdAt'> {}
 
 interface ProfileProps {
   user: User;
@@ -25,12 +25,12 @@ const Profile = ({ user, onProfileUpdate }: ProfileProps) => {
   useEffect(() => {
     if (user) {
       setUsername(user.username || '');
-      setFullName(user.full_name || '');
+      setFullName(user.fullName || '');
       setBio(user.bio || '');
       
-      // The profile_image_url is now a complete S3 signed URL
-      if (user.profile_image_url) {
-        setImagePreview(user.profile_image_url);
+      // The profileImageUrl is now a complete S3 signed URL
+      if (user.profileImageUrl) {
+        setImagePreview(user.profileImageUrl);
       }
     }
   }, [user]);
@@ -57,7 +57,7 @@ const Profile = ({ user, onProfileUpdate }: ProfileProps) => {
         }
       });
       
-      return data.user.profile_image_url;
+        return data.user.profileImageUrl;
     } catch (err: unknown) {
       console.error('Error uploading image:', err);
       const error = err as Error;
@@ -98,7 +98,7 @@ const Profile = ({ user, onProfileUpdate }: ProfileProps) => {
       if (onProfileUpdate) {
         onProfileUpdate({
           ...data.user,
-          profile_image_url: imageUrl || data.user.profile_image_url
+          profileImageUrl: imageUrl || data.user.profileImageUrl
         });
       }
     } catch (err: unknown) {

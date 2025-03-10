@@ -5,7 +5,7 @@ function generateOTP() {
   return crypto.randomInt(100000, 999999).toString();
 }
 
-// Calculate OTP expiration time (15 minutes from now instead of 5)
+// Calculate OTP expiration time (15 minutes)
 function getOtpExpiration() {
   return new Date(Date.now() + 15 * 60 * 1000);
 }

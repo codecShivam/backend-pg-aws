@@ -1,4 +1,6 @@
-const pool = require("../config/db");
+const { db } = require("../db");
+const { users } = require("../db/schema/index.ts");
+const { eq, sql } = require("drizzle-orm");
 const { generateOTP, getOtpExpiration } = require("../utils/otpUtils");
 const ses = require("../config/aws");
 
@@ -35,14 +37,21 @@ const sendOTP = async (req, res) => {
 
     // First try to connect to database
     try {
-      // Save OTP to database
-      await pool.query(
-        `INSERT INTO users (email, otp, otp_expires_at) 
-         VALUES ($1, $2, $3::timestamp) 
-         ON CONFLICT (email) 
-         DO UPDATE SET otp = $2, otp_expires_at = $3::timestamp`,
-        [email, otp, expiresAt]
-      );
+      // Save OTP to database using Drizzle
+      await db
+        .insert(users)
+        .values({
+          email,
+          otp,
+          otpExpiresAt: expiresAt
+        })
+        .onConflictDoUpdate({
+          target: users.email,
+          set: {
+            otp,
+            otpExpiresAt: expiresAt
+          }
+        });
     } catch (dbError) {
       console.error("Database error:", dbError);
       return res.status(500).json({ error: "Database connection failed" });
@@ -58,10 +67,13 @@ const sendOTP = async (req, res) => {
       
       // If email fails, clean up the database entry
       try {
-        await pool.query(
-          `UPDATE users SET otp = NULL, otp_expires_at = NULL WHERE email = $1`,
-          [email]
-        );
+        await db
+          .update(users)
+          .set({
+            otp: null,
+            otpExpiresAt: null
+          })
+          .where(eq(users.email, email));
       } catch (cleanupError) {
         console.error("Failed to clean up after email error:", cleanupError);
       }
@@ -86,31 +98,34 @@ const verifyOTP = async (req, res) => {
     // Add debugging
     console.log(`Verifying OTP for email: ${email}, OTP: ${otp}`);
     
-    const result = await pool.query(
-      `SELECT otp, otp_expires_at FROM users WHERE email = $1`,
-      [email]
-    );
+    const result = await db
+      .select({
+        storedOTP: users.otp,
+        otpExpiresAt: users.otpExpiresAt
+      })
+      .from(users)
+      .where(eq(users.email, email));
 
-    if (result.rows.length === 0) {
+    if (result.length === 0) {
       console.log(`Email not found: ${email}`);
       return res.status(400).json({ error: "Email not found" });
     }
 
-    const { otp: storedOTP, otp_expires_at } = result.rows[0];
+    const { storedOTP, otpExpiresAt } = result[0];
     const currentTime = new Date();
     
     // Debug timestamps
     console.log(`Stored OTP: ${storedOTP}`);
-    console.log(`Expiration time: ${otp_expires_at}`);
+    console.log(`Expiration time: ${otpExpiresAt}`);
     console.log(`Current time: ${currentTime}`);
-    console.log(`Is expired: ${otp_expires_at < currentTime}`);
+    console.log(`Is expired: ${otpExpiresAt < currentTime}`);
 
     if (!storedOTP) {
       console.log('No OTP stored for this email');
       return res.status(400).json({ error: "OTP expired or not sent" });
     }
     
-    if (otp_expires_at < currentTime) {
+    if (otpExpiresAt < currentTime) {
       console.log('OTP has expired');
       return res.status(400).json({ error: "OTP expired" });
     }
@@ -121,10 +136,13 @@ const verifyOTP = async (req, res) => {
     }
 
     // Clear OTP after successful verification
-    await pool.query(
-      `UPDATE users SET otp = NULL, otp_expires_at = NULL WHERE email = $1`,
-      [email]
-    );
+    await db
+      .update(users)
+      .set({
+        otp: null,
+        otpExpiresAt: null
+      })
+      .where(eq(users.email, email));
 
     req.session.user = { email };
     req.session.save();
